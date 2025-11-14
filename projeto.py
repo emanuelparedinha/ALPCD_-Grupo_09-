@@ -5,8 +5,8 @@ import requests
 import json
 from datetime import datetime
 from bs4 import BeautifulSoup
-from rich.console import Console  # É bom ter os imports iguais
-from rich.table import Table     # para evitar conflitos de merge fáceis.
+from rich.console import Console
+from rich.table import Table
 
 # Headers para simular um navegador
 headers = {
@@ -33,7 +33,7 @@ def request_api(metodo, params):
     """
     url = "https://api.itjobs.pt/job"
     
-    # --- A CHAVE DE API DEVE SER INSERIDA AQUI ---
+    # --- A CHAVE DE API FOI INSERIDA AQUI ---
     api_key = "ace3b0c8f977143fe22f7f75dab01463"
     
     params['api_key'] = api_key
@@ -88,22 +88,43 @@ def request_api(metodo, params):
             typer.echo(f"Erro ao acessar a API: {response.status_code}", err=True)
             return {}
 
-# --- AQUI COMEÇA O CÓDIGO DO COLEGA (D, E) ---
+# --- FUNÇÕES DE AMBOS OS RAMOS ---
+
+def imprime_tabela_bonita(jobs_lista):
+    """(Do Ramo A,B,C) Função auxiliar para imprimir uma tabela formatada no terminal."""
+    console = Console()
+    table = Table(show_header=True, header_style="bold green", title="\nResultados (Formato Amigável)")
+    table.add_column("ID", style="dim", width=8)
+    table.add_column("Título")
+    table.add_column("Empresa")
+    table.add_column("Localização")
+    table.add_column("Data Publicação")
+
+    for job in jobs_lista:
+        empresa = job.get('company', {}).get('name', 'N/A')
+        local = ', '.join(loc['name'] for loc in job.get('locations', []))
+        data = job.get('publishedAt', 'N/A').split(' ')[0]
+
+        table.add_row(
+            str(job.get('id', 'N/A')),
+            job.get('title', 'N/A'),
+            empresa,
+            local if local else 'N/A',
+            data
+        )
+    
+    console.print(table)
 
 def cria_csv(dados, nome_arquivo='trabalhos.csv', colunas_override=None):
     """
-    (Alínea e)
+    (Do Ramo D,E) (Alínea e)
     Função para criar o CSV. 
-    Se 'colunas_override' for None, usa o formato padrão (para alíneas a, b).
-    Se for uma lista, usa essa lista (para a alínea d).
     """
-    
     if colunas_override:
         colunas_finais = colunas_override
-        # Para a alínea D, os 'dados' já são uma lista de dicts prontos
         dados_para_escrever = dados
     else:
-        # Modo Padrão (para alíneas a, b, quando for feito o merge)
+        # Modo Padrão (agora usado pelas alíneas a, b)
         colunas_finais = ['id', 'titulo', 'empresa', 'descrição', 'data de publicação', 'salário', 'localização', 'url']
         dados_para_escrever = []
         for trabalho in dados:
@@ -135,8 +156,114 @@ def cria_csv(dados, nome_arquivo='trabalhos.csv', colunas_override=None):
     except IOError as e:
         typer.echo(f"Erro ao escrever o ficheiro CSV: {e}", err=True)
 
+# --- Comandos da CLI (TODAS AS ALÍNEAS) ---
 
-# --- Comandos da CLI ---
+@app.command()
+def top(
+    n: int = typer.Argument(..., help="O número de trabalhos a listar."),
+    csv_file: str = typer.Option(None, "--csv", help="Exportar o resultado para um ficheiro CSV."),
+    pretty: bool = typer.Option(False, "--pretty", help="Mostrar também uma tabela formatada.")
+):
+    """
+    (Alínea a) Lista os N trabalhos mais recentes publicados.
+    """
+    if n <= 0:
+        typer.echo("O número de trabalhos (N) deve ser maior que 0.", err=True)
+        raise typer.Exit()
+        
+    params = {"limit": n}
+    response = request_api('list', params)
+
+    if 'results' in response and response['results']:
+        typer.echo(json.dumps(response['results'], indent=2))
+        
+        if pretty:
+            imprime_tabela_bonita(response['results'])
+        
+        # --- CONFLITO RESOLVIDO ---
+        # Agora que a função cria_csv existe, podemos usá-la.
+        if csv_file:
+            cria_csv(response['results'], nome_arquivo=csv_file) 
+    else:
+        typer.echo("Nenhum resultado encontrado.")
+
+@app.command()
+def search(
+    localidade: str = typer.Argument(..., help="Localidade para filtrar."),
+    empresa: str = typer.Argument(..., help="Nome da empresa para filtrar."),
+    limit: int = typer.Argument(..., help="Número máximo de trabalhos a mostrar."),
+    csv_file: str = typer.Option(None, "--csv", help="Exportar o resultado para um ficheiro CSV."),
+    pretty: bool = typer.Option(False, "--pretty", help="Mostrar também uma tabela formatada.")
+):
+    """
+    (Alínea b) Lista trabalhos (ex: Full-Time), por empresa e localidade.
+    """
+    if limit <= 0:
+        typer.echo("O limite deve ser maior que 0.", err=True)
+        raise typer.Exit()
+
+    # ID '1' = Full-Time. Mudar para '2' se o requisito for Part-Time.
+    params = {
+        'limit': 1500,
+        'type': '1' 
+    }
+    response = request_api('search', params)
+
+    if 'results' in response and response['results']:
+        trabalhos_filtrados = [
+            trabalho for trabalho in response['results']
+            if trabalho.get('company', {}).get('name', '').strip().lower() == empresa.strip().lower() and
+            any(loc.get('name', '').strip().lower() == localidade.strip().lower() for loc in trabalho.get('locations', []))
+        ]
+        trabalhos_finais = trabalhos_filtrados[:limit]
+
+        if trabalhos_finais:
+            typer.echo(json.dumps(trabalhos_finais, indent=2))
+            
+            if pretty:
+                imprime_tabela_bonita(trabalhos_finais)
+
+            # --- CONFLITO RESOLVIDO ---
+            # Agora que a função cria_csv existe, podemos usá-la.
+            if csv_file:
+                cria_csv(trabalhos_finais, nome_arquivo=csv_file) 
+        else:
+            typer.echo(f"Nenhum resultado encontrado para a empresa '{empresa}' na localidade '{localidade}'.")
+    else:
+        typer.echo("Nenhum resultado encontrado na API.")
+
+@app.command()
+def type(
+    job_id: int = typer.Argument(..., help="O ID do trabalho a analisar.")
+):
+    """
+    (Alínea c) Extrai o regime de trabalho (remoto/híbrido/presencial) de um job.
+    """
+    params = {"id": job_id}
+    trabalho = request_api("get", params)
+
+    if "error" in trabalho or not trabalho:
+        typer.echo(f"Erro: A vaga com o ID {job_id} não foi encontrada.", err=True)
+        raise typer.Exit()
+
+    texto_para_analise = (
+        trabalho.get('title', '') + " " +
+        trabalho.get('body', '')
+    ).lower() 
+
+    soup = BeautifulSoup(texto_para_analise, 'lxml')
+    texto_limpo = soup.get_text()
+
+    if re.search(r"\b(h[íi]brido|hybrid)\b", texto_limpo):
+        regime = "Híbrido"
+    elif re.search(r"\b(remoto|remote|teletrabalho|work from home|wfh)\b", texto_limpo):
+        regime = "Remoto"
+    elif re.search(r"\b(presencial|on-site|escrit[óo]rio)\b", texto_limpo):
+        regime = "Presencial"
+    else:
+        regime = "Outro (não especificado)"
+
+    typer.echo(regime)
 
 @app.command()
 def skills(
@@ -192,15 +319,12 @@ def skills(
                 if re.search(rf"\b{re.escape(skill)}\b", descricao):
                     skill_counts[skill] += 1
 
-    # Ordena por contagem
     contagens_ordenadas = dict(
         sorted(skill_counts.items(), key=lambda item: item[1], reverse=True)
     )
     
-    # Filtra skills com contagem > 0
     contagens_finais = {k: v for k, v in contagens_ordenadas.items() if v > 0}
     
-    # Formato JSON pedido no PDF
     output_json = [contagens_finais]
 
     typer.echo(f"Analisados {trabalhos_no_periodo} trabalhos encontrados entre {data_inicial} e {data_final}.")
@@ -208,9 +332,7 @@ def skills(
     
     # (Alínea E)
     if csv_file:
-        # Prepara dados para o CSV
         dados_csv = [{"skill": k, "contagem": v} for k, v in contagens_finais.items()]
-        # Chama a função cria_csv com colunas personalizadas
         cria_csv(dados_csv, nome_arquivo=csv_file, colunas_override=["skill", "contagem"])
 
 
