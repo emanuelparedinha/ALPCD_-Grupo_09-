@@ -33,7 +33,7 @@ def request_api(metodo, params):
     """
     url = "https://api.itjobs.pt/job"
     
-    # --- A TUA CHAVE DE API FOI INSERIDA AQUI ---
+    # --- A CHAVE DE API FOI INSERIDA AQUI ---
     api_key = "ace3b0c8f977143fe22f7f75dab01463"
     
     params['api_key'] = api_key
@@ -88,10 +88,10 @@ def request_api(metodo, params):
             typer.echo(f"Erro ao acessar a API: {response.status_code}", err=True)
             return {}
 
-# --- AQUI COMEÇA O TEU CÓDIGO (A, B, C) ---
+# --- FUNÇÕES DE AMBOS OS RAMOS ---
 
 def imprime_tabela_bonita(jobs_lista):
-    """Função auxiliar para imprimir uma tabela formatada no terminal."""
+    """(Do Ramo A,B,C) Função auxiliar para imprimir uma tabela formatada no terminal."""
     console = Console()
     table = Table(show_header=True, header_style="bold green", title="\nResultados (Formato Amigável)")
     table.add_column("ID", style="dim", width=8)
@@ -115,8 +115,48 @@ def imprime_tabela_bonita(jobs_lista):
     
     console.print(table)
 
+def cria_csv(dados, nome_arquivo='trabalhos.csv', colunas_override=None):
+    """
+    (Do Ramo D,E) (Alínea e)
+    Função para criar o CSV. 
+    """
+    if colunas_override:
+        colunas_finais = colunas_override
+        dados_para_escrever = dados
+    else:
+        # Modo Padrão (agora usado pelas alíneas a, b)
+        colunas_finais = ['id', 'titulo', 'empresa', 'descrição', 'data de publicação', 'salário', 'localização', 'url']
+        dados_para_escrever = []
+        for trabalho in dados:
+            body_html = trabalho.get('body', '')
+            if body_html:
+                soup_limpeza = BeautifulSoup(body_html, "lxml")
+                texto_sujo = soup_limpeza.get_text(separator=" ")
+                descricao_limpa = re.sub(r'\s+', ' ', texto_sujo).strip()
+            else:
+                descricao_limpa = 'N/A'
+            
+            dados_para_escrever.append({
+                'id': trabalho.get('id', 'N/A'),
+                'titulo': trabalho.get('title', 'N/A'),
+                'empresa': trabalho.get('company', {}).get('name', 'N/A'),
+                'descrição': descricao_limpa,
+                'data de publicação': trabalho.get('publishedAt', 'N/A'),
+                'salário': trabalho.get('wage', 'N/A'),
+                'localização': ', '.join(loc['name'] for loc in trabalho.get('locations', [])),
+                'url': trabalho.get('url', 'N/A')
+            })
 
-# --- Comandos da CLI ---
+    try:
+        with open(nome_arquivo, mode='w', newline='', encoding='utf-8-sig') as file:
+            writer = csv.DictWriter(file, fieldnames=colunas_finais, delimiter=';')
+            writer.writeheader()
+            writer.writerows(dados_para_escrever)
+        typer.echo(f"\nDados exportados para {nome_arquivo}")
+    except IOError as e:
+        typer.echo(f"Erro ao escrever o ficheiro CSV: {e}", err=True)
+
+# --- Comandos da CLI (TODAS AS ALÍNEAS) ---
 
 @app.command()
 def top(
@@ -140,9 +180,10 @@ def top(
         if pretty:
             imprime_tabela_bonita(response['results'])
         
+        # --- CONFLITO RESOLVIDO ---
+        # Agora que a função cria_csv existe, podemos usá-la.
         if csv_file:
-            typer.echo(f"\n[Aviso: Função --csv (Alínea E) ainda não foi 'merged' pelo colega]")
-            # cria_csv(response['results'], nome_arquivo=csv_file) # Esta linha vai dar erro até o merge
+            cria_csv(response['results'], nome_arquivo=csv_file) 
     else:
         typer.echo("Nenhum resultado encontrado.")
 
@@ -182,9 +223,10 @@ def search(
             if pretty:
                 imprime_tabela_bonita(trabalhos_finais)
 
+            # --- CONFLITO RESOLVIDO ---
+            # Agora que a função cria_csv existe, podemos usá-la.
             if csv_file:
-                typer.echo(f"\n[Aviso: Função --csv (Alínea E) ainda não foi 'merged' pelo colega]")
-                # cria_csv(trabalhos_finais, nome_arquivo=csv_file) # Esta linha vai dar erro até o merge
+                cria_csv(trabalhos_finais, nome_arquivo=csv_file) 
         else:
             typer.echo(f"Nenhum resultado encontrado para a empresa '{empresa}' na localidade '{localidade}'.")
     else:
@@ -222,6 +264,76 @@ def type(
         regime = "Outro (não especificado)"
 
     typer.echo(regime)
+
+@app.command()
+def skills(
+    data_inicial: str = typer.Argument(..., help="Data inicial (YYYY-MM-DD)."),
+    data_final: str = typer.Argument(..., help="Data final (YYYY-MM-DD)."),
+    csv_file: str = typer.Option(None, "--csv", help="Exportar o resultado para um ficheiro CSV.")
+):
+    """
+    (Alínea d) Conta ocorrências de skills nas descrições entre duas datas.
+    """
+    # Lista de skills a procurar
+    SKILLS_LIST = [
+        "python", "java", "javascript", "react", "angular", "vue", 
+        "sql", "nosql", "mongodb", "postgres", "c#", ".net", "php", 
+        "laravel", "aws", "azure", "gcp", "docker", "kubernetes", "go"
+    ]
+    
+    try:
+        data_inicial_dt = datetime.strptime(data_inicial, "%Y-%m-%d").date()
+        data_final_dt = datetime.strptime(data_final, "%Y-%m-%d").date()
+    except ValueError:
+        typer.echo("Erro: As datas devem estar no formato 'YYYY-MM-DD'.", err=True)
+        raise typer.Exit()
+
+    if data_inicial_dt > data_final_dt:
+        typer.echo("Erro: A data inicial não pode ser posterior à data final.", err=True)
+        raise typer.Exit()
+
+    skill_counts = {skill: 0 for skill in SKILLS_LIST}
+    
+    params = {"limit": 1500} # Limite alto
+    typer.echo("A contactar a API... Isto pode demorar um pouco.")
+    trabalhos = request_api("search", params)
+
+    if not trabalhos or "results" not in trabalhos:
+        typer.echo("Nenhum resultado encontrado ou erro na API.", err=True)
+        raise typer.Exit()
+    
+    trabalhos_no_periodo = 0
+    typer.echo(f"A processar {len(trabalhos['results'])} trabalhos...")
+    
+    for trabalho in trabalhos["results"]:
+        try:
+            data_publicacao_dt = datetime.strptime(trabalho["publishedAt"], "%Y-%m-%d %H:%M:%S").date()
+        except (ValueError, TypeError, KeyError):
+            continue 
+
+        if data_inicial_dt <= data_publicacao_dt <= data_final_dt:
+            trabalhos_no_periodo += 1
+            descricao = (trabalho.get('body', '') + " " + trabalho.get('title', '')).lower()
+            
+            for skill in SKILLS_LIST:
+                if re.search(rf"\b{re.escape(skill)}\b", descricao):
+                    skill_counts[skill] += 1
+
+    contagens_ordenadas = dict(
+        sorted(skill_counts.items(), key=lambda item: item[1], reverse=True)
+    )
+    
+    contagens_finais = {k: v for k, v in contagens_ordenadas.items() if v > 0}
+    
+    output_json = [contagens_finais]
+
+    typer.echo(f"Analisados {trabalhos_no_periodo} trabalhos encontrados entre {data_inicial} e {data_final}.")
+    typer.echo(json.dumps(output_json, indent=2))
+    
+    # (Alínea E)
+    if csv_file:
+        dados_csv = [{"skill": k, "contagem": v} for k, v in contagens_finais.items()]
+        cria_csv(dados_csv, nome_arquivo=csv_file, colunas_override=["skill", "contagem"])
 
 
 # --- FIM DOS COMANDOS ---
