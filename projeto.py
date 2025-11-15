@@ -23,7 +23,7 @@ headers = {
     'Cache-Control': 'max-age=0'
 }
 
-# Inicializa a aplicação Typer
+
 app = typer.Typer()
 
 def request_api(metodo, params):
@@ -33,12 +33,11 @@ def request_api(metodo, params):
     """
     url = "https://api.itjobs.pt/job"
     
-    # --- A TUA CHAVE DE API FOI INSERIDA AQUI ---
+    # --- A TUA CHAVE DE API 
     api_key = "ace3b0c8f977143fe22f7f75dab01463"
     
     params['api_key'] = api_key
 
-    # Lógica de paginação
     if 'limit' in params and metodo != 'get':
         tamanho_pagina = 500
         total = params['limit']
@@ -74,7 +73,7 @@ def request_api(metodo, params):
                 return {}
         return {"results": resultado}
     else:
-        # Pedido simples (ex: get por ID)
+        
         try:
             response = requests.get(f"{url}/{metodo}.json", headers=headers, params=params, timeout=10)
             response.raise_for_status()
@@ -88,7 +87,7 @@ def request_api(metodo, params):
             typer.echo(f"Erro ao acessar a API: {response.status_code}", err=True)
             return {}
 
-# --- AQUI COMEÇA O TEU CÓDIGO (A, B, C) ---
+
 
 def imprime_tabela_bonita(jobs_lista):
     """Função auxiliar para imprimir uma tabela formatada no terminal."""
@@ -116,7 +115,7 @@ def imprime_tabela_bonita(jobs_lista):
     console.print(table)
 
 
-# --- Comandos da CLI ---
+
 
 @app.command()
 def top(
@@ -161,7 +160,7 @@ def search(
         typer.echo("O limite deve ser maior que 0.", err=True)
         raise typer.Exit()
 
-    # ID '1' = Full-Time. Mudar para '2' se o requisito for Part-Time.
+    
     params = {
         'limit': 1500,
         'type': '1' 
@@ -184,7 +183,7 @@ def search(
 
             if csv_file:
                 typer.echo(f"\n[Aviso: Função --csv (Alínea E) ainda não foi 'merged' pelo colega]")
-                # cria_csv(trabalhos_finais, nome_arquivo=csv_file) # Esta linha vai dar erro até o merge
+                
         else:
             typer.echo(f"Nenhum resultado encontrado para a empresa '{empresa}' na localidade '{localidade}'.")
     else:
@@ -224,7 +223,7 @@ def type(
     typer.echo(regime)
 
 
-# --- FIM DOS COMANDOS ---
+
 
 if __name__ == "__main__":
     app()
