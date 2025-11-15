@@ -23,7 +23,7 @@ headers = {
     'Cache-Control': 'max-age=0'
 }
 
-# Inicializa a aplicação Typer
+
 app = typer.Typer()
 
 def request_api(metodo, params):
@@ -33,12 +33,12 @@ def request_api(metodo, params):
     """
     url = "https://api.itjobs.pt/job"
     
-    # --- A CHAVE DE API FOI INSERIDA AQUI ---
+    # --- A CHAVE DE API 
     api_key = "ace3b0c8f977143fe22f7f75dab01463"
     
     params['api_key'] = api_key
 
-    # Lógica de paginação
+    
     if 'limit' in params and metodo != 'get':
         tamanho_pagina = 500
         total = params['limit']
@@ -74,7 +74,7 @@ def request_api(metodo, params):
                 return {}
         return {"results": resultado}
     else:
-        # Pedido simples (ex: get por ID)
+        
         try:
             response = requests.get(f"{url}/{metodo}.json", headers=headers, params=params, timeout=10)
             response.raise_for_status()
@@ -88,7 +88,7 @@ def request_api(metodo, params):
             typer.echo(f"Erro ao acessar a API: {response.status_code}", err=True)
             return {}
 
-# --- FUNÇÕES DE AMBOS OS RAMOS ---
+
 
 def imprime_tabela_bonita(jobs_lista):
     """(Do Ramo A,B,C) Função auxiliar para imprimir uma tabela formatada no terminal."""
@@ -124,7 +124,7 @@ def cria_csv(dados, nome_arquivo='trabalhos.csv', colunas_override=None):
         colunas_finais = colunas_override
         dados_para_escrever = dados
     else:
-        # Modo Padrão (agora usado pelas alíneas a, b)
+        
         colunas_finais = ['id', 'titulo', 'empresa', 'descrição', 'data de publicação', 'salário', 'localização', 'url']
         dados_para_escrever = []
         for trabalho in dados:
@@ -156,7 +156,7 @@ def cria_csv(dados, nome_arquivo='trabalhos.csv', colunas_override=None):
     except IOError as e:
         typer.echo(f"Erro ao escrever o ficheiro CSV: {e}", err=True)
 
-# --- Comandos da CLI (TODAS AS ALÍNEAS) ---
+
 
 @app.command()
 def top(
@@ -180,8 +180,7 @@ def top(
         if pretty:
             imprime_tabela_bonita(response['results'])
         
-        # --- CONFLITO RESOLVIDO ---
-        # Agora que a função cria_csv existe, podemos usá-la.
+        
         if csv_file:
             cria_csv(response['results'], nome_arquivo=csv_file) 
     else:
@@ -202,7 +201,7 @@ def search(
         typer.echo("O limite deve ser maior que 0.", err=True)
         raise typer.Exit()
 
-    # ID '1' = Full-Time. Mudar para '2' se o requisito for Part-Time.
+    #
     params = {
         'limit': 1500,
         'type': '1' 
@@ -223,8 +222,7 @@ def search(
             if pretty:
                 imprime_tabela_bonita(trabalhos_finais)
 
-            # --- CONFLITO RESOLVIDO ---
-            # Agora que a função cria_csv existe, podemos usá-la.
+          
             if csv_file:
                 cria_csv(trabalhos_finais, nome_arquivo=csv_file) 
         else:
@@ -274,7 +272,7 @@ def skills(
     """
     (Alínea d) Conta ocorrências de skills nas descrições entre duas datas.
     """
-    # Lista de skills a procurar
+    
     SKILLS_LIST = [
         "python", "java", "javascript", "react", "angular", "vue", 
         "sql", "nosql", "mongodb", "postgres", "c#", ".net", "php", 
@@ -294,7 +292,7 @@ def skills(
 
     skill_counts = {skill: 0 for skill in SKILLS_LIST}
     
-    params = {"limit": 1500} # Limite alto
+    params = {"limit": 1500} 
     typer.echo("A contactar a API... Isto pode demorar um pouco.")
     trabalhos = request_api("search", params)
 
@@ -330,13 +328,13 @@ def skills(
     typer.echo(f"Analisados {trabalhos_no_periodo} trabalhos encontrados entre {data_inicial} e {data_final}.")
     typer.echo(json.dumps(output_json, indent=2))
     
-    # (Alínea E)
+    
     if csv_file:
         dados_csv = [{"skill": k, "contagem": v} for k, v in contagens_finais.items()]
         cria_csv(dados_csv, nome_arquivo=csv_file, colunas_override=["skill", "contagem"])
 
 
-# --- FIM DOS COMANDOS ---
+
 
 if __name__ == "__main__":
     app()
