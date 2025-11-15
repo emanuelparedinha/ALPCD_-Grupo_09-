@@ -8,7 +8,7 @@ from bs4 import BeautifulSoup
 from rich.console import Console
 from rich.table import Table
 
-# Headers para simular um navegador
+
 headers = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:98.0) Gecko/20100101 Firefox/98.0',
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
@@ -201,7 +201,7 @@ def search(
         typer.echo("O limite deve ser maior que 0.", err=True)
         raise typer.Exit()
 
-    #
+    
     params = {
         'limit': 1500,
         'type': '1' 
@@ -222,7 +222,7 @@ def search(
             if pretty:
                 imprime_tabela_bonita(trabalhos_finais)
 
-          
+            
             if csv_file:
                 cria_csv(trabalhos_finais, nome_arquivo=csv_file) 
         else:
@@ -328,11 +328,9 @@ def skills(
     typer.echo(f"Analisados {trabalhos_no_periodo} trabalhos encontrados entre {data_inicial} e {data_final}.")
     typer.echo(json.dumps(output_json, indent=2))
     
-    
     if csv_file:
         dados_csv = [{"skill": k, "contagem": v} for k, v in contagens_finais.items()]
         cria_csv(dados_csv, nome_arquivo=csv_file, colunas_override=["skill", "contagem"])
-
 
 
 
