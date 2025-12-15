@@ -9,7 +9,7 @@ from rich.console import Console
 from rich.table import Table
 
 # --- CONFIGURAÇÕES GLOBAIS ---
-app = typer.Typer(help="CLI para TP1 e TP2 (Alíneas A e B)")
+app = typer.Typer(help="CLI para TP1 e TP2 (Completo)")
 console = Console()
 
 HEADERS_GENERIC = {
@@ -149,7 +149,7 @@ def skills(d_ini: str, d_fim: str, csv_file: str = typer.Option(None, "--csv")):
     typer.echo(json.dumps([res_final], indent=2))
     if csv_file: cria_csv([{"Skill": k, "Count": v} for k,v in res_final.items()], csv_file)
 
-# --- COMANDOS TP 2 (Alíneas A e B - TUA PARTE) ---
+# --- COMANDOS TP 2 (Alíneas A e B )
 
 @app.command()
 def get(job_id: int, csv_file: str = typer.Option(None, "--csv")):
@@ -189,7 +189,7 @@ def get(job_id: int, csv_file: str = typer.Option(None, "--csv")):
 
 @app.command()
 def statistics(zone: str = typer.Argument(None)):
-    """(TP2-b) Estatísticas Zona/Tipo."""   # <--- A LINHA CORRIGIDA É ESTA
+    """(TP2-b) Estatísticas Zona/Tipo."""
     typer.echo("Calculando estatísticas...")
     res = request_api('search', {'limit': 1500})
     stats = {}
@@ -205,6 +205,30 @@ def statistics(zone: str = typer.Argument(None)):
     lista = [{"Zona": z, "Tipo de Trabalho": t, "Nº de vagas": c} for (z, t), c in sorted(stats.items())]
     cria_csv(lista, "estatisticas_zona.csv", ["Zona", "Tipo de Trabalho", "Nº de vagas"]) 
     typer.echo("CSV 'estatisticas_zona.csv' criado.")
+
+# --- COMANDO TP 2 (Alínea C e D  
+
+@app.command(name="list-skills")
+def list_skills_tp2(job_title: str, csv_file: str = typer.Option(None, "--csv")):
+    """(TP2-c) Top Skills Teamlyzer."""
+    tag = job_title.lower().replace(" ", "+")
+    url = f"https://pt.teamlyzer.com/companies/jobs?tags={tag}&order=most_relevant"
+    typer.echo(f"Analisando: {url}")
+
+    soup = get_soup_teamlyzer(url)
+    if not soup: return typer.echo("Erro ao aceder ao Teamlyzer.")
+
+    cnt = {}
+    for a in soup.find_all("a", href=re.compile(r"tags=")):
+        s = limpar_texto_html(a.text).lower()
+        if s and s != job_title.lower() and len(s) < 30:
+            cnt[s] = cnt.get(s, 0) + 1
+
+    top = [{"skill": k, "count": v} for k, v in sorted(cnt.items(), key=lambda x: x[1], reverse=True)[:10]]
+    typer.echo(json.dumps(top, indent=2))
+
+    if csv_file: # (TP2-d aplicado à alínea c)
+        cria_csv(top, csv_file, ["skill", "count"])
 
 if __name__ == "__main__":
     app()
