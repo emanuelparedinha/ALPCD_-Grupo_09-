@@ -1,8 +1,8 @@
 
-# 📊 Relatório do Projeto  
+#  Relatório do Projeto  
 ## ALPCD – Grupo 09
 
-### 👥 Membros do Grupo
+###  Membros do Grupo
 - **Emanuel Paredinha** — A106827  
 - **Tomás Bourbon** — A106824  
 - **Simão Pedro** — A102520  
