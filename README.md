@@ -1,111 +1,123 @@
 
-Relatorio Projeto:
-# ALPCD_-Grupo_09-
-## Membros do grupo
-- Emanuel Paredinha — A106827
-- Tomás Bourbon  — A106824
-- Simão Pedro — A102520
+# 📊 Relatório do Projeto  
+## ALPCD – Grupo 09
 
+### 👥 Membros do Grupo
+- **Emanuel Paredinha** — A106827  
+- **Tomás Bourbon** — A106824  
+- **Simão Pedro** — A102520  
 
-1. Introdução:
-O presente projeto consiste no desenvolvimento de uma aplicação de linha de comandos (CLI) em Python, destinada à recolha, análise e apresentação de informação sobre ofertas de emprego na área das Tecnologias de Informação (IT).
+---
+
+## 1. Introdução
+
+O presente projeto consiste no desenvolvimento de uma **aplicação de linha de comandos (CLI)** em Python, destinada à recolha, análise e apresentação de informação sobre ofertas de emprego na área das **Tecnologias de Informação (IT)**.
 
 A aplicação integra duas fontes principais de dados:
 
-API pública do ItJobs.pt: Utilizada para a obtenção estruturada e massiva de anúncios de emprego.
+- **API pública do ITJobs.pt**  
+  Utilizada para a obtenção estruturada e massiva de anúncios de emprego.
 
-Plataforma Teamlyzer: Da qual é efetuado Web Scraping para recolha de informação adicional sobre empresas (avaliações, descrições, salários e benefícios).
+- **Plataforma Teamlyzer**  
+  Da qual é efetuado **Web Scraping** para recolha de informação adicional sobre empresas, nomeadamente avaliações, descrições, salários e benefícios.
 
-O projeto encontra-se dividido em dois grandes blocos funcionais que correspondem às etapas de avaliação (TP1 e TP2).
+O projeto encontra-se dividido em dois grandes blocos funcionais, correspondentes às etapas de avaliação **TP1** e **TP2**.
 
-2. Tecnologias Utilizadas:
-O projeto foi desenvolvido integralmente em Python, recorrendo às seguintes bibliotecas externas, escolhidas pela sua eficiência e robustez:
+---
 
-Typer: Criação da interface de linha de comandos (CLI) e gestão de argumentos/opções.
+## 2. Tecnologias Utilizadas
 
-Requests: Comunicação HTTP com a API REST e obtenção de páginas HTML.
+O projeto foi desenvolvido integralmente em **Python**, recorrendo às seguintes bibliotecas externas, escolhidas pela sua eficiência e robustez:
 
-BeautifulSoup (bs4): Parsing e extração de dados (scraping) do HTML do Teamlyzer.
+- **Typer** – Criação da interface de linha de comandos (CLI) e gestão de argumentos/opções  
+- **Requests** – Comunicação HTTP com a API REST e obtenção de páginas HTML  
+- **BeautifulSoup (bs4)** – Parsing e extração de dados (Web Scraping) do HTML do Teamlyzer  
+- **Rich** – Apresentação visual de dados no terminal (tabelas formatadas e cores)  
+- **Datetime** – Manipulação, comparação e formatação de datas  
+- **re (Regex)** – Expressões regulares para deteção de padrões textuais (skills e regimes de trabalho)  
+- **CSV / JSON** – Bibliotecas nativas para serialização e exportação de dados  
 
-Rich: Apresentação visual de dados no terminal (tabelas formatadas e cores).
+---
 
-Datetime: Manipulação, comparação e formatação de datas.
+## 3. Arquitetura da Aplicação
 
-Re (Regex): Expressões regulares para deteção de padrões textuais (skills e regimes de trabalho).
+A aplicação segue uma **estrutura modular**, facilitando a manutenção e a reutilização de código.
 
-CSV / JSON: Bibliotecas nativas para serialização e exportação de dados.
+### 3.1 Configurações Globais
 
-3. Arquitetura da Aplicação:
-A aplicação segue uma estrutura modular para facilitar a manutenção e reutilização de código:
+- Definição centralizada da **API Key do ITJobs**
+- Configuração de **Headers HTTP**, incluindo um *User-Agent* específico (`TeamlyzerScraper`), de forma a evitar bloqueios durante o scraping
 
-3.1 Configurações Globais:
-Definição centralizada da API Key do ItJobs.
+### 3.2 Funções Auxiliares
 
-Configuração de Headers HTTP (incluindo o User-Agent específico TeamlyzerScraper) para evitar bloqueios durante o scraping.
+Para evitar repetição de código, foram implementadas várias funções genéricas:
 
-3.2 Funções Auxiliares:
-Para evitar repetição de código, foram implementadas funções genéricas:
+- `request_api()` – Função central de acesso à API, com lógica de **paginação automática**
+- `get_soup_teamlyzer()` – Realiza pedidos HTTP e converte o HTML em objetos BeautifulSoup
+- `limpar_texto_html()` – Remove tags HTML e normaliza espaços em branco
+- `cria_csv()` – Exporta listas de dicionários para ficheiros CSV
 
-request_api(): Função central de acesso à API que implementa a lógica de paginação automática, permitindo obter mais resultados do que o limite padrão da API.
+---
 
-get_soup_teamlyzer(): Função resiliente para realizar pedidos HTTP e converter o HTML em objetos BeautifulSoup.
+## 4. Funcionalidades – TP1 (API ITJobs)
 
-limpar_texto_html(): Utilitário para remover tags HTML e normalizar espaços em branco nas descrições.
+### 4.1 Top N Ofertas (`top`)
+Obtém as **N ofertas de emprego mais recentes**, permitindo:
+- Visualização em JSON  
+- Apresentação em tabela formatada (`--pretty`)  
+- Exportação para CSV  
 
-cria_csv(): Função genérica que exporta qualquer lista de dicionários para ficheiro CSV.
+### 4.2 Pesquisa Filtrada (`search`)
+Pesquisa vagas aplicando filtros cumulativos:
+- Empresa  
+- Localidade  
+- Regime de trabalho **Part-time**
 
-4. Funcionalidades – TP1 (API ItJobs):
-4.1 Top N Ofertas (top)
-Permite obter as N ofertas de emprego mais recentes. A visualização pode ser feita via JSON, Tabela formatada (--pretty) ou exportada para CSV.
+### 4.3 Identificação do Regime de Trabalho (`type`)
+Dado o ID de uma vaga, o sistema analisa o título e o corpo do anúncio utilizando **expressões regulares**, classificando o regime como:
+- Remoto  
+- Híbrido  
+- Presencial / Outro  
 
-4.2 Pesquisa Filtrada (search)
-Realiza uma pesquisa de vagas aplicando filtros cumulativos:
+### 4.4 Análise Temporal de Skills (`skills`)
+Conta a frequência de tecnologias pré-definidas (Python, SQL, Java, etc.) em vagas publicadas num intervalo de datas especificado pelo utilizador.
 
-Filtro por Empresa;
+---
 
-Filtro por Localidade;
+## 5. Funcionalidades – TP2 (Web Scraping)
 
-Filtro de Negócio: Seleciona exclusivamente vagas do tipo "Part-time", conforme requisito do projeto.
+### 5.1 Detalhe da Oferta Enriquecido (`get`)
+Obtém os detalhes técnicos de uma vaga através da API do ITJobs e cruza essa informação com o Teamlyzer, adicionando:
+- Rating da empresa  
+- Descrição institucional  
+- Salários médios  
+- Benefícios reportados  
 
-4.3 Identificação do Regime (type)
-Dado o ID de uma vaga, o sistema analisa o título e o corpo do anúncio utilizando Expressões Regulares para classificar o regime de trabalho em:
+### 5.2 Estatísticas por Zona Geográfica (`statistics`)
+Gera estatísticas agregadas, contabilizando o número de vagas por:
+- Zona geográfica  
+- Tipo de contrato  
 
-Remoto;
+Os resultados são exportados automaticamente para o ficheiro `estatisticas_zona.csv`.
 
-Híbrido;
+### 5.3 Top Skills no Teamlyzer (`list-skills`)
+Acede à página de empregos do Teamlyzer para um cargo específico (ex.: *Data Scientist*) e extrai as **skills mais frequentes**, permitindo identificar tendências do mercado.
 
-Presencial/Outro.
+---
 
-4.4 Análise Temporal de Skills (skills):
-Conta a frequência de tecnologias pré-definidas (Python, SQL, Java, etc.) nas descrições de vagas publicadas num intervalo de datas específico.
+## 6. Tratamento de Erros e Robustez
 
-5. Funcionalidades – TP2 (Web Scraping):
-5.1 Detalhe da Oferta Enriquecido (get)
-Obtém os detalhes técnicos de uma vaga (via API) e cruza essa informação com o Teamlyzer (via Scraping) para adicionar:
-
-Rating da empresa;
-
-Descrição institucional;
-
-Salários médios e Benefícios reportados.
-
-5.2 Estatísticas por Zona (statistics)
-Gera um relatório estatístico agregado, contabilizando o número de vagas por Zona Geográfica e Tipo de Contrato. O resultado é exportado automaticamente para o ficheiro estatisticas_zona.csv.
-
-5.3 Top Skills no Teamlyzer (list-skills)
-Acede à página de empregos do Teamlyzer para um cargo específico (ex: "Data Scientist") e extrai as tecnologias (tags) mais frequentes, permitindo identificar tendências de mercado.
-
-6. Tratamento de Erros e Robustez:
 O código foi desenvolvido com foco na estabilidade:
 
-Utilização de blocos try-except para capturar falhas de rede ou erros na API.
+- Utilização de blocos `try-except` para capturar falhas de rede ou erros na API  
+- Verificação da existência de dados antes de aceder a chaves de dicionários  
+- Feedback claro ao utilizador em caso de parâmetros inválidos ou ausência de resultados  
 
-Verificação da existência de dados antes de aceder a chaves de dicionários.
+---
 
-Feedback claro ao utilizador em caso de parâmetros inválidos ou falta de resultados.
+## 7. Conclusão
 
-7. Conclusão:
-Este projeto cumpre todos os objetivos propostos, demonstrando a capacidade de integrar APIs REST com técnicas de Web Scraping para criar uma ferramenta de análise de dados funcional, modular e útil para a análise do mercado de trabalho em IT.
+Este projeto cumpre todos os objetivos propostos, demonstrando a capacidade de integrar **APIs REST** com técnicas de **Web Scraping**, resultando numa ferramenta de análise de dados **funcional, modular e útil** para a análise do mercado de trabalho na área das Tecnologias de Informação.
 
 
 
@@ -120,6 +132,7 @@ e)python projeto.py top 20 --csv ,,, python projeto.py search Porto "Dellent" 3 
 
 
 tp2
+
 a)python projeto.py get 506837
 b)python projeto.py statistics
 c)python projeto.py list-skills "python"
